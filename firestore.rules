@@ -1,0 +1,173 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required) - The user's unique ID
+    //   - displayName: string (optional) - The user's display name
+    //   - email: string (required, email format) - The user's email address
+    //   - photoURL: string (optional) - The user's profile picture URL
+    //   - createdAt: timestamp (required) - When the profile was created
+    //
+    // Collection: users/{userId}/cart
+    // Document ID: {productId}
+    // Fields:
+    //   - productId: int (required) - The ID of the product
+    //   - quantity: int (required, positive) - The number of items
+    //   - addedAt: timestamp (required) - When the item was added
+    //
+    // Collection: users/{userId}/favorites
+    // Document ID: {productId}
+    // Fields:
+    //   - productId: int (required) - The ID of the favorited product
+    //   - addedAt: timestamp (required) - When the product was favorited
+    //
+    // Collection: users/{userId}/orders
+    // Document ID: {orderId}
+    // Fields:
+    //   - id: string (required) - The order's unique ID
+    //   - userId: string (required) - The UID of the customer
+    //   - date: string (required, ISO 8601) - When the order was placed
+    //   - status: string (required) - The current status
+    //   - total: number (required) - The total amount
+    //   - items: list (required) - List of items in the order
+    //
+    // Collection: reviews
+    // Document ID: {reviewId}
+    // Fields:
+    //   - productId: int (required) - The ID of the product being reviewed
+    //   - userName: string (required, max 50 chars) - The name of the reviewer
+    //   - userUid: string (required) - The UID of the reviewer
+    //   - rating: int (required, 1-5) - The star rating
+    //   - comment: string (required, max 1000 chars) - The review text
+    //   - date: string (required, ISO 8601) - When the review was posted
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "lqf8544@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'createdAt']) &&
+             hasOnlyAllowedFields(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'role']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCartItem(data) {
+      return hasRequiredFields(['productId', 'quantity', 'addedAt']) &&
+             hasOnlyAllowedFields(['productId', 'quantity', 'addedAt']) &&
+             data.productId is int &&
+             data.quantity is int && data.quantity > 0 &&
+             data.addedAt is timestamp;
+    }
+
+    function isValidFavorite(data) {
+      return hasRequiredFields(['productId', 'addedAt']) &&
+             hasOnlyAllowedFields(['productId', 'addedAt']) &&
+             data.productId is int &&
+             data.addedAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return hasRequiredFields(['productId', 'userName', 'userUid', 'rating', 'comment', 'date']) &&
+             hasOnlyAllowedFields(['productId', 'userName', 'userUid', 'rating', 'comment', 'date']) &&
+             data.productId is int &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 50 &&
+             data.userUid == request.auth.uid &&
+             data.rating is int && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() > 0 && data.comment.size() <= 1000 &&
+             isValidDateString(data.date);
+    }
+
+    function isValidOrder(data) {
+      return hasRequiredFields(['userId', 'date', 'status', 'total', 'items']) &&
+             hasOnlyAllowedFields(['id', 'userId', 'date', 'status', 'total', 'items']) &&
+             data.userId == request.auth.uid &&
+             isValidDateString(data.date) &&
+             data.status in ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'] &&
+             data.total is number &&
+             data.items is list;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+
+      match /cart/{productId} {
+        allow read, write: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidCartItem(request.resource.data);
+      }
+
+      match /favorites/{productId} {
+        allow read, write: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidFavorite(request.resource.data);
+      }
+
+      match /orders/{orderId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidOrder(request.resource.data);
+        allow update: if isAdmin(); // Only admins can update order status
+      }
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true; // Reviews are public
+      allow create: if isAuthenticated() && isValidReview(request.resource.data);
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userUid == request.auth.uid && isValidReview(request.resource.data));
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

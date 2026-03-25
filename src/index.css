@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Noto Serif", serif;
+  --font-body: "Manrope", sans-serif;
+  --font-label: "Manrope", sans-serif;
+
+  --color-surface: #fefdf1;
+  --color-on-surface: #36392b;
+  --color-on-surface-variant: #636656;
+  --color-primary: #5b6a31;
+  --color-primary-dim: #505e26;
+  --color-primary-container: #d9eaa3;
+  --color-on-primary-container: #495720;
+  --color-secondary: #78603e;
+  --color-secondary-container: #feddb3;
+  --color-on-secondary-container: #644e2e;
+  --color-surface-container-low: #fafaeb;
+  --color-surface-container: #f4f5e4;
+  --color-surface-container-high: #eeefdd;
+  --color-surface-container-highest: #e8ead5;
+  --color-outline-variant: #b9bba8;
+  --color-tertiary: #aa4243;
+
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline italic;
+  }
+}
+
+@layer utilities {
+  .glass-nav {
+    @apply bg-surface/80 backdrop-blur-xl;
+  }
+  
+  .ambient-glow {
+    box-shadow: 0 40px 80px -20px rgba(54, 57, 43, 0.06);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

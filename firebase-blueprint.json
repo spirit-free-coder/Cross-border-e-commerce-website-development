@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User's profile information and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID from Firebase Auth" },
+        "displayName": { "type": "string", "description": "The user's display name" },
+        "email": { "type": "string", "format": "email", "description": "The user's email address" },
+        "photoURL": { "type": "string", "description": "The user's profile picture URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A product review or tribute",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The review's unique ID" },
+        "productId": { "type": "integer", "description": "The ID of the product being reviewed" },
+        "userName": { "type": "string", "description": "The name of the reviewer" },
+        "userUid": { "type": "string", "description": "The UID of the reviewer" },
+        "rating": { "type": "integer", "description": "The star rating (1-5)" },
+        "comment": { "type": "string", "description": "The review text" },
+        "date": { "type": "string", "format": "date", "description": "When the review was posted" }
+      },
+      "required": ["productId", "userName", "rating", "comment", "date"]
+    },
+    "CartItem": {
+      "title": "CartItem",
+      "description": "An item in the user's shopping cart",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "integer", "description": "The ID of the product" },
+        "quantity": { "type": "integer", "description": "The number of items" },
+        "addedAt": { "type": "string", "format": "date-time", "description": "When the item was added to the cart" }
+      },
+      "required": ["productId", "quantity"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "A product favorited by the user",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "integer", "description": "The ID of the favorited product" },
+        "addedAt": { "type": "string", "format": "date-time", "description": "When the product was favorited" }
+      },
+      "required": ["productId"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The order's unique ID" },
+        "userId": { "type": "string", "description": "The UID of the customer" },
+        "date": { "type": "string", "format": "date", "description": "When the order was placed" },
+        "status": { "type": "string", "enum": ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"], "description": "The current status of the order" },
+        "total": { "type": "number", "description": "The total order amount" },
+        "items": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "productId": { "type": "integer" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "required": ["userId", "date", "status", "total", "items"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/cart/{productId}": {
+      "schema": "CartItem",
+      "description": "User's shopping cart items"
+    },
+    "/users/{userId}/favorites/{productId}": {
+      "schema": "Favorite",
+      "description": "User's favorite products"
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": "Order",
+      "description": "User's order history"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Global product reviews"
+    }
+  }
+}
